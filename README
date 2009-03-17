@@ -1,0 +1,82 @@
+malloc_wrap  by: Joe Damato  http://timetobleed.com
+===========
+
+This has only been tested on x86_64 Linux 2.6 - with SINGLE THREADED programs. No idea what happens in multithreaded apps.
+
+IMPORTANT:
+==========
+Some malloc libraries I've tested crash when used with libdl, this is unfortunate, but there is a work-around.
+
+First try using the tester normally, if it crashes with your malloc implementation, you can try to build the tester like this:
+gcc -ggdb -Wall -L/library/path/here -llibname -ldl -fPIC -o tester alloc_tester.c
+
+For example, for tcmalloc you do this:
+gcc -ggdb -Wall -L/custom/lib -ltcmalloc -ldl -fPIC -o test alloc_tester.c
+
+Be sure to use ldd to see that your binary is actually linked correctly (in the tcmalloc example) 
+
+libtcmalloc.so.0 => /custom/lib/libtcmalloc.so.0 (0x00007fdfd8956000)
+libdl.so.2 => /lib/libdl.so.2 (0x00007fdfd8853000)
+libc.so.6 => /lib/libc.so.6 (0x00007fdfd8616000)
+libunwind.so.7 => /custom/lib/libunwind.so.7 (0x00007fdfd84fe000)
+libstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x00007fdfd8300000)
+libm.so.6 => /lib/libm.so.6 (0x00007fdfd817e000)
+libgcc_s.so.1 => /lib/libgcc_s.so.1 (0x00007fdfd8071000)
+/lib64/ld-linux-x86-64.so.2 (0x00007fdfd8abb000)
+
+When you use the tester, just tell it to use the default allocator, which is now tcmalloc (or whatever):
+./tester trace-file default
+
+Building:
+========
+Just run 'make' - this will build the shim library and the testing harness.
+
+Using:
+======
+
+See: http://timetobleed.com for more info about using this.
+
+Step 1: 
+
+You can use the shim with an arbitrary binary like this:
+
+% LD_PRELOAD=/path/to/shim/malloc_wrap.so /path/to/binary
+
+You will find output in /tmp/malloc-footprint.PID where PID will be the PID of the process.
+
+Step 2:
+
+CAUTION: This step could take a while if you have lots of data.
+
+Translate the output into a more usable format:
+
+% ruby /tmp/malloc-footprint.PID trace-file
+
+Step 3:
+
+CAUTION: This step could take a while if you have lots of data.
+
+Run the replayer on the trace-file, using the default allocator:
+
+% ./tester trace-file default 
+
+Next, run the tester with a different allocator:
+
+% ./tester trace-file /path/to/allocator.so
+
+Collecting Data:
+===============
+Get an idea about the number of allocations of different sizes:
+
+% ruby alloc_stats.rb /tmp/malloc-footprint.PID
+
+Measuring memory usage of different allocators:
+
+This is all you; write a script to capture ps output as the tester runs with different allocators, graph the data.
+
+If you care about CPU cycles spent in malloc-family functions:
+
+Use ltrace:
+% ltrace -c ./tester trace-file /path/to/allocator.so
+
+If I have time I'll include more scripts to help do analysis.
