@@ -1,3 +1,5 @@
+all: shim tester
+
 shim: 
 	gcc -O2 -Wall -ldl -fPIC -o malloc_wrap.so -shared malloc_wrap.c
 
